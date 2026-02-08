@@ -1,0 +1,22 @@
+version: '3.9'
+
+services:
+  pdf-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: report-pdf-generator-app
+    environment:
+      - AWS_ACCESS_KEY_ID=AKIAZ5WTWXRJQU3ZYAPL
+      - AWS_SECRET_ACCESS_KEY=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
+      - AWS_DEFAULT_REGION=ap-northeast-1
+      - S3_BUCKET_NAME=jinzaicompass-pdf
+      - DYNAMODB_TABLE_NAME=ReportStatusTable
+      - SQS_QUEUE_URL=https://sqs.ap-northeast-1.amazonaws.com/682270047315/report_queue
+    volumes:
+      # Mount thư mục output để lấy file PDF ra ngoài host
+      - ./output:/app/output
+    # Nếu bạn muốn chạy một lần rồi thoát (ví dụ test)
+    tty: true
+    stdin_open: true
+    command: python main.py   # thay bằng tên file chính của bạn

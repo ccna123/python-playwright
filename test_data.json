@@ -1,0 +1,26 @@
+{
+    "report_id": "report-20250207-001",
+    "session_id": "session-20250207-xyz",
+    "content": "<h1 style=\"text-align:center; color:#2c5282;\">週次報告 - 2026年2月第1週</h1>\n<p><strong style=\"color:#3182ce;\">週次報告期間: 2026年2月1日から7日まで</strong></p>\n<p class=\"ql-size-large ql-align-justify\">営業部は今週、売上高が前週比<strong>18.4%</strong>増加し、強力な成長を遂げました。東京支店は引き続き業績をリードしています。</p>\n\n<h2 style=\"color:#2b6cb0;\">主要な営業成果</h2>\n<table style=\"border-collapse: collapse; width: 100%; margin: 15px 0;\">\n  <thead>\n    <tr style=\"background-color: #bee3f8;\">\n      <th style=\"border: 1px solid #a0aec0; padding: 8px;\">支店</th>\n      <th style=\"border: 1px solid #a0aec0; padding: 8px;\">売上高 (百万円)</th>\n      <th style=\"border: 1px solid #a0aec0; padding: 8px;\">成長率 (%)</th>\n      <th style=\"border: 1px solid #a0aec0; padding: 8px;\">新規契約数</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td style=\"border: 1px solid #a0aec0; padding: 8px;\">東京支店</td>\n      <td style=\"border: 1px solid #a0aec0; padding: 8px;\">720</td>\n      <td style=\"border: 1px solid #a0aec0; padding: 8px; color:#38a169;\">+22%</td>\n      <td style=\"border: 1px solid #a0aec0; padding: 8px;\">8</td>\n    </tr>\n    <tr style=\"background-color: #f7fafc;\">\n      <td style=\"border: 1px solid #a0aec0; padding: 8px;\">大阪支店</td>\n      <td style=\"border: 1px solid #a0aec0; padding: 8px;\">310</td>\n      <td style=\"border: 1px solid #a0aec0; padding: 8px; color:#38a169;\">+15%</td>\n      <td style=\"border: 1px solid #a0aec0; padding: 8px;\">3</td>\n    </tr>\n    <tr>\n      <td style=\"border: 1px solid #a0aec0; padding: 8px;\">福岡支店</td>\n      <td style=\"border: 1px solid #a0aec0; padding: 8px;\">170</td>\n      <td style=\"border: 1px solid #a0aec0; padding: 8px; color:#e53e3e;\">+8%</td>\n      <td style=\"border: 1px solid #a0aec0; padding: 8px;\">1</td>\n    </tr>\n  </tbody>\n</table>\n\n<p class=\"ql-indent-1 ql-size-large\"><strong>今週の戦略会議写真:</strong></p>\n<img src=\"https://images.unsplash.com/photo-1552581234-26160f608093?w=800\" alt=\"営業部会議写真\">\n\n<h3 style=\"color:#2f855a;\">注目成果</h3>\n<ol>\n  <li data-list=\"ordered\">今年初めから最も高い週間売上を達成しました。</li>\n  <li data-list=\"ordered\">重要な顧客と契約を締結しました。</li>\n          <li data-list=\"ordered\">リード変換率が<span style=\"color:#38a169;\">27%</span>増加しました。</li> \t\n</ol> \t\n<p class=\"ql-align-center\" style=\"background-color:#fefcbf; padding:15x ; border-radius :5 px ;\"><strong style = \"font-size : large ;\">来週の目標:</strong> 周間売上高を一億五千万円に達成し、デジタル広告キャンペーンを拡大します。</p> \t\n<p class = \"ql-indent-2 ql-size-small\"style = \"color :#718 a96 ;\">東京支店の営業チーム写真:</p> \t\n<img src = \"https://images.unsplash.com/photo-1551836o22-d5d9d4c4c4c4?w=8 o o\" alt = \"東京支店の営業チームが祝っている写真\"> \t\n<pstyle = \"text-align:right ; color :#4 a556 d ;\"><em>敬具,<br>渡辺健太<br>東京支店営業部長</em></p>",
+    "title": "週次報告 - 第一週（2月）",
+    "is_public": false,
+    "report_type_name": "週次報告",
+    "user_fullname": "渡辺健太",
+    "date": "2026-02-07T14:30:00",
+    "departments": [
+        {
+            "department_name": "営業部"
+        }
+    ],
+    "divisions": [
+        {
+            "division_name": "東京支店"
+        }
+    ],
+    "groups": [],
+    "users": [
+        {
+            "user_fullname": "渡辺"
+        }
+    ]
+}
