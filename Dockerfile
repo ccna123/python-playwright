@@ -1,5 +1,5 @@
 # Sử dụng image Python chính thức
-FROM python:3.11-slim
+FROM public.ecr.aws/docker/library/python:3.10-slim
 
 # Cài các dependencies hệ thống cần cho Playwright + Chromium
 RUN apt-get update && apt-get install -y --no-install-recommends \
