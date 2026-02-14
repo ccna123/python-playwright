@@ -28,8 +28,5 @@ RUN pip install --no-cache-dir -r requirements.txt \
 # Copy toàn bộ source code
 COPY . .
 
-# Tạo thư mục để lưu PDF (sẽ mount volume vào đây)
-# RUN mkdir -p /app/output
-
 # Command chạy ứng dụng
 CMD ["python", "main.py"]

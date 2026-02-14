@@ -1,0 +1,33 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - ECR_SERVER=$(echo $ECR_REPOSITORY_URI | cut -d/ -f1)
+      - echo $ECR_SERVER
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_SERVER
+      - IMAGE_TAG="v$CODEBUILD_BUILD_NUMBER"
+  build:
+    commands:
+      - echo Building the Docker image...
+      - docker build -t $ECR_REPOSITORY_URI:$IMAGE_TAG .
+      - docker tag $ECR_REPOSITORY_URI:$IMAGE_TAG $ECR_REPOSITORY_URI:latest
+  post_build:
+    commands:
+      - echo Pushing the Docker images...
+      - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+      - docker push $ECR_REPOSITORY_URI:latest
+
+      - echo Updating Lambda code...
+      - aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $ECR_REPOSITORY_URI:$IMAGE_TAG
+
+      - echo "Waiting for function update to complete..."
+      - aws lambda wait function-updated --function-name $LAMBDA_NAME
+
+      - echo Publishing new version...
+      - NEW_VERSION=$(aws lambda publish-version --function-name $LAMBDA_NAME --query 'Version' --output text)
+      - echo "New Version is $NEW_VERSION"
+
+      - echo Updating Alias LIVE to point to version $NEW_VERSION...
+      - aws lambda update-alias --function-name $LAMBDA_NAME --name LIVE --function-version $NEW_VERSION
