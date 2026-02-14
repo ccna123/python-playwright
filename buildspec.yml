@@ -5,7 +5,6 @@ phases:
     commands:
       - echo Logging in to Amazon ECR...
       - ECR_SERVER=$(echo $ECR_REPOSITORY_URI | cut -d/ -f1)
-      - echo $ECR_SERVER
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_SERVER
       - IMAGE_TAG="v$CODEBUILD_BUILD_NUMBER"
   build:
@@ -19,15 +18,27 @@ phases:
       - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
       - docker push $ECR_REPOSITORY_URI:latest
 
-      - echo Updating Lambda code...
-      - aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $ECR_REPOSITORY_URI:$IMAGE_TAG
+      - echo Registering new Task Definition...
+      # 1. Lấy thông tin Task Definition hiện tại và lưu vào file temp.json
+      - aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION_FAMILY --query 'taskDefinition' > task-def.json
 
-      - echo "Waiting for function update to complete..."
-      - aws lambda wait function-updated --function-name $LAMBDA_NAME
+      # 2. Tạo một bản copy mới, thay thế Image URI cũ bằng Image URI mới (với IMAGE_TAG mới)
+      # Chúng ta dùng 'python' hoặc 'jq' để sửa file JSON này một cách an toàn
+      - |
+        NEW_TASK_DEF=$(python3 -c "
+        import json, os
+        with open('task-def.json') as f:
+            d = json.load(f)
+            # Loại bỏ các trường không cần thiết khi register mới
+            for key in ['taskDefinitionArn', 'revision', 'status', 'requiresAttributes', 'compatibilities', 'registeredAt', 'registeredBy']:
+                d.pop(key, None)
+            # Cập nhật Image cho container (giả sử container đầu tiên là container chính)
+            d['containerDefinitions'][0]['image'] = os.environ['ECR_REPOSITORY_URI'] + ':' + os.environ['IMAGE_TAG']
+            print(json.dumps(d))
+        ")
 
-      - echo Publishing new version...
-      - NEW_VERSION=$(aws lambda publish-version --function-name $LAMBDA_NAME --query 'Version' --output text)
-      - echo "New Version is $NEW_VERSION"
+      # 3. Register bản Task Definition mới lên ECS
+      - echo "$NEW_TASK_DEF" > new-task-def.json
+      - aws ecs register-task-definition --cli-input-json file://new-task-def.json
 
-      - echo Updating Alias LIVE to point to version $NEW_VERSION...
-      - aws lambda update-alias --function-name $LAMBDA_NAME --name LIVE --function-version $NEW_VERSION
+      - echo "Task Definition updated successfully!"
