@@ -299,6 +299,7 @@ async def main():
     print("===========================================================")
     print("Worker bắt đầu xử lý từ environment variables...")
     
+    env = os.environ.get("ENV", "local")
     bucket_name = os.environ.get("S3_BUCKET_NAME")
     dynamodb_table = os.environ.get("DYNAMODB_TABLE_NAME", "ReportDownloadStatus")  # default tên table
 
@@ -307,7 +308,17 @@ async def main():
         sys.exit(1)
 
     # Lấy message body từ environment variable (truyền từ Lambda)
-    message_body = os.environ.get("MESSAGE_BODY")
+    if env == "local":
+        # Dành cho local testing: đọc từ file sample_message.json
+        try:
+            with open("test_data.json", "r") as f:
+                message_body = f.read()
+        except FileNotFoundError:
+            print("File test_data.json không tồn tại. Vui lòng tạo file này với nội dung JSON mẫu để test local.")
+            sys.exit(1)
+    else:
+        message_body = os.environ.get("MESSAGE_BODY")
+        
     if not message_body:
         print("Thiếu MESSAGE_BODY từ environment variables")
         sys.exit(1)
