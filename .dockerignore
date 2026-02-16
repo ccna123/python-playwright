@@ -1,5 +1,4 @@
 docker-compose.yml
 .env
-test_data.json
 .env.template
 /output
