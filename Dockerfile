@@ -2,13 +2,15 @@
 FROM python:3.14-slim
 
 # Cài các dependencies hệ thống cần cho Playwright + Chromium
-RUN apt-get update && apt-get install -y \
-    libpango-1.0-0 \
-    libpangoft2-1.0-0 \
-    libharfbuzz0b \
-    libffi-dev \
-    libcairo2 \
-    fonts-noto-cjk \
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y \
+        libpango-1.0-0 \
+        libpangoft2-1.0-0 \
+        libharfbuzz0b \
+        libffi-dev \
+        libcairo2 \
+        fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
 # Tạo thư mục làm việc
