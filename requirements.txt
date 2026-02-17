@@ -1,3 +1,3 @@
 beautifulsoup4
-playwright
+weasyprint
 boto3

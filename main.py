@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 import boto3
 from botocore.exceptions import ClientError
 import uuid
-from playwright.async_api import async_playwright
+from weasyprint import HTML
 
 # ─── Hàm parse rich text giống C# ───
 def parse_content_to_html(content_html: str) -> str:
@@ -165,21 +165,13 @@ def page_html(data: dict) -> str:
     return html
 
 async def generate_pdf_from_html(html_content: str) -> bytes:
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True,
-            args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
-        )
-        page = await browser.new_page()
-        await page.set_content(html_content, wait_until="networkidle")
-        
-        pdf_bytes = await page.pdf(
-            format="A4",
-            print_background=True,
-            margin={"top": "15mm", "right": "10mm", "bottom": "15mm", "left": "10mm"},
-        )
-        await browser.close()
+    try:
+        pdf_bytes = HTML(string=html_content).write_pdf()
         return pdf_bytes
+    except Exception as e:
+        print(f"Lỗi generate PDF bằng WeasyPrint: {e}")
+        raise
+
 
 async def upload_to_s3_and_get_signed_url(pdf_bytes: bytes, bucket_name: str, report_id: str) -> str:
     s3_client = boto3.client('s3')
