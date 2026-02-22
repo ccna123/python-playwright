@@ -1,7 +1,6 @@
 import asyncio
 import os
 import json
-import time
 import sys
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -9,6 +8,9 @@ import boto3
 from botocore.exceptions import ClientError
 import uuid
 from weasyprint import HTML
+
+s3_client = boto3.client('s3')
+dynamodb_client = boto3.client('dynamodb')
 
 # ─── Hàm parse rich text giống C# ───
 def parse_content_to_html(content_html: str) -> str:
@@ -174,9 +176,8 @@ async def generate_pdf_from_html(html_content: str) -> bytes:
 
 
 async def upload_to_s3_and_get_signed_url(pdf_bytes: bytes, bucket_name: str, report_id: str) -> str:
-    s3_client = boto3.client('s3')
     
-    today = datetime.now().strftime("%Y/%m")
+    
     key = f"app/pdf/report_{report_id}.pdf"
     
     try:
@@ -198,30 +199,26 @@ async def upload_to_s3_and_get_signed_url(pdf_bytes: bytes, bucket_name: str, re
         print(f"Lỗi khi upload lên S3: {e}")
         raise
 
-async def process_message(message_body: dict, bucket_name: str, dynamodb_client, table_name: str):
+async def process_message(message_body: dict, bucket_name: str, dynamodb_client, table_name: str, s3_client):
+    session_id = None
+    uploaded_key = None
+
     try:
         body = json.loads(message_body)
-        
-        # Lấy các trường cần thiết từ message SQS
-        report_id = body.get('report_id') or str(uuid.uuid4())  # fallback nếu không có id
-        content_html = body.get('content', '')
-        
-        if not content_html.strip():
-            print(f"Message {message_body} thiếu content → bỏ qua")
-            return
 
-        # Lấy session_id từ message (backend phải gửi kèm)
+        report_id = body.get('report_id') or str(uuid.uuid4())
+        content_html = body.get('content', '')
+
+        if not content_html.strip():
+            raise ValueError("Content is empty")
+
         session_id = body.get('session_id')
-        if not session_id:
-            print(f"Message thiếu session_id → không thể cập nhật DynamoDB")
-            # Vẫn xử lý PDF nhưng không update DB
 
         print(f"Xử lý report ID: {report_id}")
 
-        # Tạo data cho PDF từ chính message SQS
         pdf_data = {
             "title": body.get('title', "Báo cáo"),
-            "content": content_html,                    # ← nội dung chính từ SQS
+            "content": content_html,
             "date": datetime.fromisoformat(body.get('date', datetime.now().isoformat())),
             "is_public": body.get('is_public', True),
             "report_type_name": body.get('report_type_name', 'N/A'),
@@ -232,36 +229,51 @@ async def process_message(message_body: dict, bucket_name: str, dynamodb_client,
             "users": body.get('users', []),
         }
 
-        # Generate HTML và PDF
         html = page_html(pdf_data)
         pdf_bytes = await generate_pdf_from_html(html)
 
-        # Upload S3 và lấy signed URL
-        signed_url = await upload_to_s3_and_get_signed_url(pdf_bytes, bucket_name, report_id)
+        uploaded_key = f"app/pdf/report_{report_id}.pdf"
 
-        print(f"Hoàn tất report {report_id}")
-        print(f"SIGNED URL: {signed_url}")
+        # Upload S3
+        signed_url = await upload_to_s3_and_get_signed_url(
+            pdf_bytes, bucket_name, report_id
+        )
 
-        # # Lưu file local để debug (có thể bỏ sau)
-        # local_path = f"/app/output/report_{report_id}.pdf"
-        # with open(local_path, "wb") as f:
-        #     f.write(pdf_bytes)
-        # print(f"Đã lưu file local: {local_path}")
+        print(f"Upload thành công: {uploaded_key}")
 
-        # Cập nhật DynamoDB nếu có session_id
         if session_id:
-            update_report_status(dynamodb_client, table_name, session_id, signed_url)
+            update_report_status(
+                dynamodb_client,
+                table_name,
+                session_id,
+                signed_url=signed_url,
+                status="complete"
+            )
 
-    except json.JSONDecodeError:
-        print(f"Message {message_body.get('MessageId', 'unknown')} không phải JSON hợp lệ → bỏ qua")
-        if session_id:
-            update_report_status(dynamodb_client, table_name, session_id, "", error_reason="Invalid JSON", status="failed")
     except Exception as e:
-        print(f"Lỗi xử lý message {message_body.get('MessageId', 'unknown')}: {e}")
-        if session_id:
-            update_report_status(dynamodb_client, table_name, session_id, "", error_reason=str(e), status="failed")
+        print(f"Lỗi xử lý message: {e}")
 
-        # Không delete để SQS retry
+        # Nếu đã upload S3 mà bị lỗi sau đó → xóa object
+        if uploaded_key:
+            try:
+                s3_client.delete_object(
+                    Bucket=bucket_name,
+                    Key=uploaded_key
+                )
+                print(f"Đã xóa object S3: {uploaded_key}")
+            except Exception as delete_err:
+                print(f"Lỗi khi xóa S3 object: {delete_err}")
+
+        # Update DynamoDB trạng thái failed
+        if session_id:
+            update_report_status(
+                dynamodb_client,
+                table_name,
+                session_id,
+                signed_url="",   # không update url
+                error_reason=str(e),
+                status="failed"
+            )
 
 # ─── Update trạng thái DynamoDB khi hoàn thành ───
 def update_report_status(dynamodb_client, table_name: str, session_id: str, signed_url: str, error_reason: str = "", status: str = "complete"):
@@ -288,6 +300,7 @@ def update_report_status(dynamodb_client, table_name: str, session_id: str, sign
         print(f"Lỗi cập nhật DynamoDB cho session {session_id}: {e}")
 
 async def main():
+    
     print("===========================================================")
     print("Worker bắt đầu xử lý từ environment variables...")
     
@@ -315,13 +328,12 @@ async def main():
         print("Thiếu MESSAGE_BODY từ environment variables")
         sys.exit(1)
 
-    dynamodb_client = boto3.client('dynamodb')
 
     print(f"Bucket: {bucket_name}")
     print(f"DynamoDB Table: {dynamodb_table}")
     print(f"Message Body received: {message_body[:100]}...")  # in ngắn để debug
 
-    await process_message(message_body, bucket_name, dynamodb_client, dynamodb_table)
+    await process_message(message_body, bucket_name, dynamodb_client, dynamodb_table, s3_client)
 
     print("Worker hoàn thành xử lý message duy nhất.")
     sys.exit(0)
