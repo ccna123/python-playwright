@@ -17,7 +17,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 4. Copy code vào đúng thư mục của Lambda
-COPY app.py ${LAMBDA_TASK_ROOT}
+COPY main.py ${LAMBDA_TASK_ROOT}
 
 # 5. Handler phải trùng với tên file và tên hàm (app.py -> def handler)
 CMD [ "main.handler" ]
