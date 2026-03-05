@@ -1,27 +1,23 @@
-# Sử dụng image Python chính thức
-FROM python:3.14-slim
+# 1. Base image chính chủ AWS (Amazon Linux 2)
+FROM public.ecr.aws/lambda/python:3.9
 
-# Cài các dependencies hệ thống cần cho Playwright + Chromium
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y \
-        libpango-1.0-0 \
-        libpangoft2-1.0-0 \
-        libharfbuzz0b \
-        libffi-dev \
-        libcairo2 \
-        fonts-noto-cjk \
-    && rm -rf /var/lib/apt/lists/*
+# 2. Cài dependencies bằng YUM (vì đây là Amazon Linux)
+# Cài Pango, Cairo và Font tiếng Nhật (Noto Sans CJK)
+RUN yum install -y \
+    pango \
+    pango-devel \
+    cairo \
+    cairo-devel \
+    libffi-devel \
+    google-noto-sans-japanese-fonts \
+    && yum clean all
 
-# Tạo thư mục làm việc
-WORKDIR /app
-
-# Copy requirements trước để tận dụng cache layer
+# 3. Cài đặt thư viện Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy toàn bộ source code
-COPY . .
+# 4. Copy code vào đúng thư mục của Lambda
+COPY app.py ${LAMBDA_TASK_ROOT}
 
-# Command chạy ứng dụng
-CMD ["python", "main.py"]
+# 5. Handler phải trùng với tên file và tên hàm (app.py -> def handler)
+CMD [ "main.handler" ]

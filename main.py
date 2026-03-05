@@ -9,16 +9,13 @@ from botocore.exceptions import ClientError
 import uuid
 from weasyprint import HTML
 
+# Khởi tạo client bên ngoài để tận dụng connection pooling
 s3_client = boto3.client('s3')
-dynamodb_client = boto3.client('dynamodb')
 
-# ─── Hàm parse rich text giống C# ───
 def parse_content_to_html(content_html: str) -> str:
     soup = BeautifulSoup(content_html, 'html.parser')
-
     tags = {'p', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
     unused_tags = {'iframe', 'video', 'embed', 'script'}
-
     order_counter = 0
 
     for node in soup.find_all():
@@ -28,17 +25,10 @@ def parse_content_to_html(content_html: str) -> str:
 
         cls = node.get('class', [])
         style = node.get('style', '') or ''
-
-        if node.name in tags:
-            style += "margin: 0; padding: 0;"
-
-        if node.name == 'p':
-            style += "min-height: 18px;"
-
-        if node.name == 'h1':
-            style += "font-size: 32px;"
-        if node.name == 'h2':
-            style += "font-size: 24px;"
+        if node.name in tags: style += "margin: 0; padding: 0;"
+        if node.name == 'p': style += "min-height: 18px;"
+        if node.name == 'h1': style += "font-size: 32px;"
+        if node.name == 'h2': style += "font-size: 24px;"
 
         if node.name == 'li':
             data_list = node.get('data-list', '')
@@ -48,43 +38,27 @@ def parse_content_to_html(content_html: str) -> str:
                 order_counter += 1
                 node['value'] = str(order_counter)
                 style += "list-style-type: decimal; list-style-position: outside;"
-            if style.strip():
-                node['style'] = style.strip()
-            if 'data-list' in node.attrs:
-                del node.attrs['data-list']
+            if style.strip(): node['style'] = style.strip()
+            if 'data-list' in node.attrs: del node.attrs['data-list']
 
-        # Align
         if any(c in cls for c in ['ql-align-left', 'ql-align-center', 'ql-align-right', 'ql-align-justify']):
-            align = 'left' if 'ql-align-left' in cls else \
-                    'center' if 'ql-align-center' in cls else \
-                    'right' if 'ql-align-right' in cls else 'justify'
+            align = next(c.split('-')[-1] for c in cls if 'ql-align' in c)
             style += f"text-align: {align};"
 
-        # Size
-        if 'ql-size-small' in cls:
-            style += "font-size: 12px;"
-        if 'ql-size-large' in cls:
-            style += "font-size: 24px;"
-        if 'ql-size-huge' in cls:
-            style += "font-size: 40px; font-weight: bold;"
+        if 'ql-size-small' in cls: style += "font-size: 12px;"
+        if 'ql-size-large' in cls: style += "font-size: 24px;"
+        if 'ql-size-huge' in cls: style += "font-size: 40px; font-weight: bold;"
 
-        # Indent
         for i in range(1, 9):
-            if f'ql-indent-{i}' in cls:
-                style += f"padding-left: {3 * i}em;"
+            if f'ql-indent-{i}' in cls: style += f"padding-left: {3 * i}em;"
 
-        if style.strip():
-            node['style'] = style.strip()
-
-        if cls:
-            del node['class']
+        if style.strip(): node['style'] = style.strip()
+        if cls: del node['class']
 
     return str(soup)
 
-# ─── Tạo HTML giống hệt C# ───
 def page_html(data: dict) -> str:
     parsed_content = parse_content_to_html(data['content'])
-
     target_all = "公開" if data.get('is_public', False) else "、".join(
         [d.get('department_name', '') for d in data.get('departments', [])] +
         [d.get('division_name', '') for d in data.get('divisions', [])] +
@@ -92,251 +66,106 @@ def page_html(data: dict) -> str:
         [u.get('user_fullname', '') for u in data.get('users', [])]
     )
 
-    html = f"""
+    return f"""
     <!DOCTYPE html>
     <html lang="ja">
     <head>
         <meta charset="UTF-8">
         <style>
-            body {{
-                font-family: 'Noto Sans JP', 'Helvetica', 'Arial', sans-serif;
-                margin: 0;
-                padding: 0;
-                font-size: 12pt;
-                line-height: 1.5;
-            }}
-            .header-table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 10px;
-            }}
-            .header-table th {{
-                background-color: #d9e9f3;
-                text-align: left;
-                padding: 6px 10px;
-                font-weight: normal;
-                white-space: nowrap;
-                width: 80px;
-            }}
-            .header-table td {{
-                padding: 6px 10px;
-                background-color: #F3F3F3;
-            }}
-            .content-title {{
-                margin-top: 30px;
-                padding: 6px 10px;
-                background-color: #D2E1E7;
-                font-weight: bold;
-            }}
-            .content {{
-                padding: 20px;
-                background-color: #FBFBFB;
-                border: 1px solid #BFBFBF;
-                border-top: none;
-                min-height: 200px;
-            }}
-            img {{
-                max-width: 100%;
-                height: auto;
-                display: block;
-                margin: 10px 0;
-            }}
+            body {{ font-family: 'Noto Sans JP', 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 20px; font-size: 12pt; line-height: 1.5; }}
+            .header-table {{ width: 100%; border-collapse: collapse; margin-bottom: 10px; }}
+            .header-table th {{ background-color: #d9e9f3; text-align: left; padding: 6px 10px; font-weight: normal; white-space: nowrap; width: 80px; border: 1px solid #ccc; }}
+            .header-table td {{ padding: 6px 10px; background-color: #F3F3F3; border: 1px solid #ccc; }}
+            .content-title {{ margin-top: 30px; padding: 6px 10px; background-color: #D2E1E7; font-weight: bold; border: 1px solid #ccc; }}
+            .content {{ padding: 20px; background-color: #FBFBFB; border: 1px solid #ccc; border-top: none; min-height: 200px; }}
+            img {{ max-width: 100%; height: auto; display: block; margin: 10px 0; }}
         </style>
     </head>
     <body>
         <table class="header-table">
             <tr>
                 <th>起票者</th><td>{data.get('user_fullname', 'Unknown')}</td>
-                <th>起票日</th><td>{data.get('date', datetime.now()).strftime("%Y/%m/%d")}</td>
+                <th>起票日</th><td>{data.get('date_obj').strftime("%Y/%m/%d") if data.get('date_obj') else ''}</td>
                 <th>タイプ</th><td>{data.get('report_type_name', 'N/A')}</td>
             </tr>
         </table>
         <table class="header-table">
-            <tr>
-                <th>閲覧者</th>
-                <td colspan="5">{target_all}</td>
-            </tr>
+            <tr><th>閲覧者</th><td colspan="5">{target_all}</td></tr>
         </table>
         <div class="content-title">内容</div>
-        <div class="content">
-            {parsed_content}
-        </div>
+        <div class="content">{parsed_content}</div>
     </body>
     </html>
     """
-    return html
 
-async def generate_pdf_from_html(html_content: str) -> bytes:
-    try:
-        pdf_bytes = HTML(string=html_content).write_pdf()
-        return pdf_bytes
-    except Exception as e:
-        print(f"Lỗi generate PDF bằng WeasyPrint: {e}")
-        raise
+async def process_logic(body: dict, bucket_name: str):
+    """Hàm xử lý chính tách biệt hoàn toàn để dùng chung"""
+    report_id = body.get('report_id') or str(uuid.uuid4())
+    content_html = body.get('content', '')
+    if not content_html.strip():
+        raise ValueError("Content is empty")
 
-
-async def upload_to_s3_and_get_signed_url(pdf_bytes: bytes, bucket_name: str, report_id: str) -> str:
-    
-    
-    key = f"app/pdf/report_{report_id}.pdf"
-    
-    try:
-        s3_client.put_object(
-            Bucket=bucket_name,
-            Key=key,
-            Body=pdf_bytes,
-            ContentType='application/pdf'
-        )
-        
-        signed_url = s3_client.generate_presigned_url(
-            'get_object',
-            Params={'Bucket': bucket_name, 'Key': key},
-            ExpiresIn=300  # 5 phút
-        )
-        return signed_url
-    
-    except ClientError as e:
-        print(f"Lỗi khi upload lên S3: {e}")
-        raise
-
-async def process_message(message_body: dict, bucket_name: str, dynamodb_client, table_name: str, s3_client):
-    session_id = None
-    uploaded_key = None
-
-    try:
-        body = json.loads(message_body)
-
-        report_id = body.get('report_id') or str(uuid.uuid4())
-        content_html = body.get('content', '')
-
-        if not content_html.strip():
-            raise ValueError("Content is empty")
-
-        session_id = body.get('session_id')
-
-        print(f"Xử lý report ID: {report_id}")
-
-        pdf_data = {
-            "title": body.get('title', "Báo cáo"),
-            "content": content_html,
-            "date": datetime.fromisoformat(body.get('date', datetime.now().isoformat())),
-            "is_public": body.get('is_public', True),
-            "report_type_name": body.get('report_type_name', 'N/A'),
-            "user_fullname": body.get('user_fullname', 'Unknown'),
-            "departments": body.get('departments', []),
-            "divisions": body.get('divisions', []),
-            "groups": body.get('groups', []),
-            "users": body.get('users', []),
-        }
-
-        html = page_html(pdf_data)
-        pdf_bytes = await generate_pdf_from_html(html)
-
-        uploaded_key = f"app/pdf/report_{report_id}.pdf"
-
-        # Upload S3
-        signed_url = await upload_to_s3_and_get_signed_url(
-            pdf_bytes, bucket_name, report_id
-        )
-
-        print(f"Upload thành công: {uploaded_key}")
-
-        if session_id:
-            update_report_status(
-                dynamodb_client,
-                table_name,
-                session_id,
-                signed_url=signed_url,
-                status="complete"
-            )
-
-    except Exception as e:
-        print(f"Lỗi xử lý message: {e}")
-
-        # Nếu đã upload S3 mà bị lỗi sau đó → xóa object
-        if uploaded_key:
-            try:
-                s3_client.delete_object(
-                    Bucket=bucket_name,
-                    Key=uploaded_key
-                )
-                print(f"Đã xóa object S3: {uploaded_key}")
-            except Exception as delete_err:
-                print(f"Lỗi khi xóa S3 object: {delete_err}")
-
-        # Update DynamoDB trạng thái failed
-        if session_id:
-            update_report_status(
-                dynamodb_client,
-                table_name,
-                session_id,
-                signed_url="",   # không update url
-                error_reason=str(e),
-                status="failed"
-            )
-
-# ─── Update trạng thái DynamoDB khi hoàn thành ───
-def update_report_status(dynamodb_client, table_name: str, session_id: str, signed_url: str, error_reason: str = "", status: str = "complete"):
-    try:
-        dynamodb_client.update_item(
-            TableName=table_name,
-            Key={'session_id': {'S': session_id}},
-            UpdateExpression="SET #status = :status, #url = :url, #error_reason = :error_reason, updated_at = :updated_at",
-            ExpressionAttributeNames={
-                "#status": "status",
-                "#url": "url",
-                "#error_reason": "error_reason"
-            },
-            ExpressionAttributeValues={
-                ":status": {"S": status},
-                ":url": {"S": signed_url},
-                ":error_reason": {"S": error_reason},
-                ":updated_at": {"S": datetime.utcnow().isoformat()}
-            },
-            ReturnValues="UPDATED_NEW"
-        )
-        print(f"Đã cập nhật DynamoDB: session_id={session_id}, status={status}, url={signed_url}")
-    except ClientError as e:
-        print(f"Lỗi cập nhật DynamoDB cho session {session_id}: {e}")
-
-async def main():
-    
-    print("===========================================================")
-    print("Worker bắt đầu xử lý từ environment variables...")
-    
-    env = os.environ.get("ENV", "local")
-    bucket_name = os.environ.get("S3_BUCKET_NAME")
-    dynamodb_table = os.environ.get("DYNAMODB_TABLE_NAME", "ReportDownloadStatus")  # default tên table
-
-    if not bucket_name:
-        print("Thiếu S3_BUCKET_NAME")
-        sys.exit(1)
-
-    # Lấy message body từ environment variable (truyền từ Lambda)
-    if env == "local":
-        # Dành cho local testing: đọc từ file sample_message.json
+    # Xử lý date
+    raw_date = body.get('date')
+    date_obj = datetime.now()
+    if raw_date:
         try:
-            with open("test_data.json", "r") as f:
-                message_body = f.read()
-        except FileNotFoundError:
-            print("File test_data.json không tồn tại. Vui lòng tạo file này với nội dung JSON mẫu để test local.")
-            sys.exit(1)
-    else:
-        message_body = os.environ.get("MESSAGE_BODY")
+            date_obj = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
+        except: pass
+
+    pdf_data = {**body, "date_obj": date_obj}
+    html = page_html(pdf_data)
+    
+    # Generate PDF
+    pdf_bytes = HTML(string=html).write_pdf()
+    
+    # Upload S3
+    key = f"app/pdf/report_{report_id}.pdf"
+    s3_client.put_object(
+        Bucket=bucket_name,
+        Key=key,
+        Body=pdf_bytes,
+        ContentType='application/pdf'
+    )
+    
+    # Signed URL
+    url = s3_client.generate_presigned_url(
+        'get_object', Params={'Bucket': bucket_name, 'Key': key}, ExpiresIn=300
+    )
+    return {"report_id": report_id, "url": url}
+
+# --- HANDLER CHO LAMBDA (NHẬN REQUEST) ---
+def handler(event, context):
+    """Điểm vào cho AWS Lambda Container"""
+    bucket_name = os.environ.get("S3_BUCKET_NAME")
+    try:
+        # Nếu bắn cURL, event có thể là string
+        body = event if isinstance(event, dict) else json.loads(event)
         
-    if not message_body:
-        print("Thiếu MESSAGE_BODY từ environment variables")
-        sys.exit(1)
+        # Vì Lambda handler mặc định là sync, ta dùng loop để chạy async logic
+        loop = asyncio.get_event_loop()
+        result = loop.run_until_complete(process_logic(body, bucket_name))
+        
+        return {"statusCode": 200, "body": result}
+    except Exception as e:
+        print(f"Error: {e}")
+        return {"statusCode": 500, "body": str(e)}
 
+# --- MAIN CHO LOCAL SCRIPT (CHẠY FILE TRỰC TIẾP) ---
+async def main():
+    print("--- Chế độ chạy script Local ---")
+    bucket_name = os.environ.get("S3_BUCKET_NAME")
+    if not bucket_name:
+        print("Lỗi: Thiếu S3_BUCKET_NAME env"); return
 
-    print(f"Bucket: {bucket_name}")
-    print(f"DynamoDB Table: {dynamodb_table}")
-    print(f"Message Body received: {message_body[:100]}...")  # in ngắn để debug
-
-    await process_message(message_body, bucket_name, dynamodb_client, dynamodb_table, s3_client)
-
-    print("Worker hoàn thành xử lý message duy nhất.")
-    sys.exit(0)
+    try:
+        with open("test_data.json", "r") as f:
+            message_body = json.load(f)
+        res = await process_logic(message_body, bucket_name)
+        print(f"Thành công! URL: {res['url']}")
+    except FileNotFoundError:
+        print("Lỗi: Không tìm thấy test_data.json")
 
 if __name__ == "__main__":
+    # Nếu chạy 'python app.py' thì vào main, nếu Docker Lambda gọi thì nó gọi thẳng vào 'handler'
     asyncio.run(main())
