@@ -20,7 +20,7 @@ phases:
 
   build:
     commands:
-      - echo Building Docker image (Docker schema v2)...
+      - echo "Building Docker image (Docker schema v2)..."
       - docker build --platform linux/amd64 -t $ECR_REPOSITORY_URI:$IMAGE_TAG .
       - docker tag $ECR_REPOSITORY_URI:$IMAGE_TAG $ECR_REPOSITORY_URI:latest
 
