@@ -104,6 +104,8 @@ async def process_logic(body: dict, bucket_name: str):
     content_html = body.get('content', '')
     if not content_html.strip():
         raise ValueError("Content is empty")
+    
+    print(content_html)
 
     # Xử lý date
     raw_date = body.get('date')
