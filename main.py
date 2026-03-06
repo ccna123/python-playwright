@@ -12,7 +12,17 @@ from weasyprint import HTML
 # Khởi tạo client bên ngoài để tận dụng connection pooling
 s3_client = boto3.client('s3')
 
+
+def _to_text(value, default: str = "") -> str:
+    """Convert nullable/mixed values to a safe string for HTML/template usage."""
+    if value is None:
+        return default
+    if isinstance(value, str):
+        return value
+    return str(value)
+
 def parse_content_to_html(content_html: str) -> str:
+    content_html = _to_text(content_html)
     soup = BeautifulSoup(content_html, 'html.parser')
     tags = {'p', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
     unused_tags = {'iframe', 'video', 'embed', 'script'}
@@ -58,12 +68,12 @@ def parse_content_to_html(content_html: str) -> str:
     return str(soup)
 
 def page_html(data: dict) -> str:
-    parsed_content = parse_content_to_html(data['content'])
+    parsed_content = parse_content_to_html(data.get('content'))
     target_all = "公開" if data.get('is_public', False) else "、".join(
-        [d.get('department_name', '') for d in data.get('departments', [])] +
-        [d.get('division_name', '') for d in data.get('divisions', [])] +
-        [g.get('group_name', '') for g in data.get('groups', [])] +
-        [u.get('user_fullname', '') for u in data.get('users', [])]
+        [_to_text(d.get('department_name')) for d in data.get('departments', [])] +
+        [_to_text(d.get('division_name')) for d in data.get('divisions', [])] +
+        [_to_text(g.get('group_name')) for g in data.get('groups', [])] +
+        [_to_text(u.get('user_fullname')) for u in data.get('users', [])]
     )
 
     return f"""
@@ -84,9 +94,9 @@ def page_html(data: dict) -> str:
     <body>
         <table class="header-table">
             <tr>
-                <th>起票者</th><td>{data.get('user_fullname', 'Unknown')}</td>
+                <th>起票者</th><td>{_to_text(data.get('user_fullname'), 'Unknown')}</td>
                 <th>起票日</th><td>{data.get('date_obj').strftime("%Y/%m/%d") if data.get('date_obj') else ''}</td>
-                <th>タイプ</th><td>{data.get('report_type_name', 'N/A')}</td>
+                <th>タイプ</th><td>{_to_text(data.get('report_type_name'), 'N/A')}</td>
             </tr>
         </table>
         <table class="header-table">
@@ -101,7 +111,7 @@ def page_html(data: dict) -> str:
 async def process_logic(body: dict, bucket_name: str):
     """Hàm xử lý chính tách biệt hoàn toàn để dùng chung"""
     report_id = body.get('report_id') or str(uuid.uuid4())
-    content_html = body.get('content', '')
+    content_html = _to_text(body.get('content'))
     if not content_html.strip():
         raise ValueError("Content is empty")
     
