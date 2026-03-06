@@ -136,21 +136,38 @@ async def process_logic(body: dict, bucket_name: str):
 
 # --- HANDLER CHO LAMBDA (NHẬN REQUEST) ---
 def handler(event, context):
-    """Điểm vào cho AWS Lambda Container"""
     bucket_name = os.environ.get("S3_BUCKET_NAME")
+    print(event)
+
     try:
-        # Nếu bắn cURL, event có thể là string
-        body = event if isinstance(event, dict) else json.loads(event)
-        
-        # Vì Lambda handler mặc định là sync, ta dùng loop để chạy async logic
+        # API Gateway
+        if isinstance(event, dict) and "body" in event:
+            body = event["body"]
+
+            if isinstance(body, str):
+                body = json.loads(body)
+
+        # Local Lambda Runtime
+        elif isinstance(event, str):
+            body = json.loads(event)
+
+        else:
+            body = event
+
         loop = asyncio.get_event_loop()
         result = loop.run_until_complete(process_logic(body, bucket_name))
-        
-        return {"statusCode": 200, "body": result}
-    except Exception as e:
-        print(f"Error: {e}")
-        return {"statusCode": 500, "body": str(e)}
 
+        return {
+            "statusCode": 200,
+            "body": json.dumps(result)
+        }
+
+    except Exception as e:
+        print(e)
+        return {
+            "statusCode": 500,
+            "body": str(e)
+        }
 # --- MAIN CHO LOCAL SCRIPT (CHẠY FILE TRỰC TIẾP) ---
 async def main():
     print("--- Chế độ chạy script Local ---")
