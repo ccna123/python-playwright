@@ -156,6 +156,11 @@ async def process_logic(body: dict, bucket_name: str):
             Params={'Bucket': bucket_name, 'Key': key},
             ExpiresIn=300
         )
+        
+        return {
+            "report_id": report_id,
+            "url": url
+        }
     except ClientError as e:
         print("Presigned URL Error:", e.response['Error']['Message'])
         raise Exception(f"Presigned URL failed: {e.response['Error']['Message']}")
@@ -163,8 +168,10 @@ async def process_logic(body: dict, bucket_name: str):
 # --- HANDLER CHO LAMBDA (NHẬN REQUEST) ---
 def handler(event, context):
     bucket_name = os.environ.get("S3_BUCKET_NAME")
-    print(event)
     print("chạy trong handler")
+    if not bucket_name:
+        print("Lỗi: Thiếu S3_BUCKET_NAME env"); return
+
 
     try:
         # API Gateway
