@@ -105,8 +105,6 @@ async def process_logic(body: dict, bucket_name: str):
     if not content_html.strip():
         raise ValueError("Content is empty")
     
-    print(content_html)
-
     # Xử lý date
     raw_date = body.get('date')
     date_obj = datetime.now()
@@ -123,23 +121,40 @@ async def process_logic(body: dict, bucket_name: str):
     
     # Upload S3
     key = f"app/pdf/report_{report_id}.pdf"
-    s3_client.put_object(
-        Bucket=bucket_name,
-        Key=key,
-        Body=pdf_bytes,
-        ContentType='application/pdf'
-    )
-    
+    try:
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Key=key,
+            Body=pdf_bytes,
+            ContentType='application/pdf'
+        )
+        print(f"S3 upload success: s3://{bucket_name}/{key}")
+
+    except ClientError as e:
+        print("S3 Upload Error:", e.response['Error']['Message'])
+        raise Exception(f"S3 upload failed: {e.response['Error']['Message']}")
+
+    except Exception as e:
+        print("Unexpected S3 Error:", str(e))
+        raise Exception(f"S3 upload failed: {str(e)}")
+
+
     # Signed URL
-    url = s3_client.generate_presigned_url(
-        'get_object', Params={'Bucket': bucket_name, 'Key': key}, ExpiresIn=300
-    )
-    return {"report_id": report_id, "url": url}
+    try:
+        url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket_name, 'Key': key},
+            ExpiresIn=300
+        )
+    except ClientError as e:
+        print("Presigned URL Error:", e.response['Error']['Message'])
+        raise Exception(f"Presigned URL failed: {e.response['Error']['Message']}")
 
 # --- HANDLER CHO LAMBDA (NHẬN REQUEST) ---
 def handler(event, context):
     bucket_name = os.environ.get("S3_BUCKET_NAME")
     print(event)
+    print("chạy trong handler")
 
     try:
         # API Gateway

@@ -1,0 +1,20 @@
+{
+  "resource": "/report",
+  "path": "/report",
+  "httpMethod": "POST",
+  "headers": {
+    "Accept": "*/*",
+    "accept-encoding": "gzip, deflate, br",
+    "Content-Type": "application/json",
+    "Host": "zx1s1f8is4.execute-api.ap-northeast-1.amazonaws.com",
+    "User-Agent": "Thunder Client (https://www.thunderclient.com)"
+  },
+  "requestContext": {
+    "resourcePath": "/report",
+    "httpMethod": "POST",
+    "path": "/dev/report",
+    "stage": "dev"
+  },
+  "body": "{\"report_id\":\"complex-test-2026-001\",\"session_id\":\"session-complex-999\",\"title\":\"2026年度 Q1 プロジェクト進捗・財務統合報告書\",\"user_fullname\":\"渡辺健太\",\"date\":\"2026-03-06T10:00:00\",\"is_public\":false,\"report_type_name\":\"重要戦略報告\",\"departments\":[{\"department_name\":\"経営企画部\"},{\"department_name\":\"技術開発部\"}],\"divisions\":[{\"division_name\":\"グローバル戦略局\"}],\"groups\":[{\"group_name\":\"AI導入推進チーム\"}],\"users\":[{\"user_fullname\":\"田中太郎\"},{\"user_fullname\":\"佐藤花子\"}],\"content\":\"<h1 style='text-align:center; color:#1a365d;'>TEST</h1>\"}",
+  "isBase64Encoded": false
+}
