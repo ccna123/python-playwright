@@ -30,10 +30,10 @@ phases:
       - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
       - docker push $ECR_REPOSITORY_URI:latest
 
-      - echo Updating Lambda function...
+      # - echo Updating Lambda function...
 
-      - aws lambda update-function-code \
-        --function-name $LAMBDA_FUNCTION_NAME \
-        --image-uri $ECR_REPOSITORY_URI:$IMAGE_TAG
+      # - aws lambda update-function-code \
+      #   --function-name $LAMBDA_FUNCTION_NAME \
+      #   --image-uri $ECR_REPOSITORY_URI:$IMAGE_TAG
 
       - echo Deployment completed
