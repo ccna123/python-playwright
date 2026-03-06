@@ -1,13 +1,12 @@
 # 1. Base image chính chủ AWS (Amazon Linux 2)
-FROM public.ecr.aws/lambda/python:3.9
+FROM public.ecr.aws/lambda/python:3.11
+
 
 # 2. Cài dependencies bằng YUM (vì đây là Amazon Linux)
 # Cài Pango, Cairo và Font tiếng Nhật (Noto Sans CJK)
-RUN yum install -y \
+RUN yum update -y && yum install -y \
     pango \
-    pango-devel \
     cairo \
-    cairo-devel \
     libffi-devel \
     google-noto-sans-japanese-fonts \
     && yum clean all
